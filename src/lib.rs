@@ -1,7 +1,8 @@
 mod model;
 use crate::model::HoursData;
-use dioxus::prelude::*;
+use dioxus::{html::input_data::keyboard_types::Key, prelude::*};
 use dioxus_router::{use_route, use_router, Link, Route, Router};
+use model::HoursRecord;
 
 #[derive(PartialEq, Props)]
 struct Names {
@@ -15,7 +16,7 @@ fn show_names(cx: Scope<Names>) -> Element {
             for name in cx.props.names.iter(){
                 p{
                     button{
-                        onclick: move |event|{
+                        onclick: move |_event|{
                             let path = format!("/user/{}", name);
                             dbg!(&path);
                             router.navigate_to(&path);
@@ -33,17 +34,18 @@ struct HoursDataProps<'a> {
     pub hours_data: &'a UseRef<HoursData>,
 }
 
-
 fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
     let router = use_router(cx);
     let hours_data = cx.props.hours_data;
     let names = hours_data.read().names.clone();
+    let new_name = use_state(cx, || "".to_string());
     cx.render(rsx! {
         ul{
-            for name in names.into_iter(){
+            for (i,name) in names.into_iter().enumerate(){
                 p {
                     button{
-                        onclick: move |event|{
+                        class:"name",
+                        onclick: move |_event|{
                             let path = format!("/user/{}", name);
                             dbg!(&path);
                             router.navigate_to(&path);
@@ -51,37 +53,144 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                         "{name}"
                     },
                     button{
+                        onclick: move |_event|{
+                            let mut hours_data = hours_data.write();
+                            if hours_data.names.len()>1 && i>0{
+                                let x = hours_data.names.remove(i);
+                                hours_data.names.insert(i-1, x);
+                            }
+                        },
                         "up"
-                    }
+                    },
                     button{
+                        onclick: move |_event|{
+                            let mut hours_data = hours_data.write();
+                            if hours_data.names.len()>1 && i<hours_data.names.len()-1{
+                                let x = hours_data.names.remove(i);
+                                hours_data.names.insert(i+1, x);
+                            }
+                        },
                         "down"
+                    },
+                    button{
+                        onclick: move |_event|{
+                            let mut hours_data = hours_data.write();
+                            if !hours_data.names.is_empty(){
+                                hours_data.names.remove(i);
+                            }
+                        },
+                        "delete"
                     }
-
                 }
             }
-        }
+        },
+        input{
+            value: "{new_name}",
+            oninput: move |event|{
+                let _hours_data = hours_data.write();
+                new_name.set(event.value.clone());
+            },
+            onkeypress: move |event|{
+                if event.key()==Key::Enter{
+                    let mut hours_data = hours_data.write();
+                    hours_data.names.push(new_name.get().clone());
+                    new_name.set("".to_string());
+                }
+            },
+
+        },
     })
 }
 
-pub fn user_view(cx: Scope) -> Element {
+fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
     let route = use_route(cx);
     let name = route.segment("name").unwrap();
+    let hours_data = cx.props.hours_data;
 
     cx.render(rsx! {
         div{
             h1{
                 "{name}"
+            },
+            if hours_data.read().is_started(name){
+                rsx!{button{
+                    class:"menu",
+                    onclick: move |_event|{
+                        let mut hours_data = hours_data.write();
+                        hours_data.end(name);
+                    },
+                    "End"
+                }}
+            }else{
+                rsx!{button{
+                    class:"menu",
+                    onclick: move |_event|{
+                        let mut hours_data = hours_data.write();
+                        hours_data.start(name);
+                    },
+                    "Start"
+                }}
+            },
+            period_overview{
+                hours_data: hours_data,
+                month: 4,
+                year: 2023,
+            }
+        }
+
+    })
+}
+
+#[inline_props]
+pub fn period_entry(cx: Scope, record: HoursRecord) -> Element {
+    cx.render(rsx! {
+        div{
+            div{
+                class:"a",
+                record.date()
+            },
+            span{
+                class:"b",
+                record.start_time()
+            },
+            /*
+            <span class="b"><span v-if="endTimeValid">{{endTime}}</span><span v-else>-</span></span>\
+            <span class="c"><span v-if="endTimeValid">{{originalHours}}</span><span v-else>-</span></span>\
+            <span class="d">{{hours}}</span>\
+            <span class="e"></span>\
+            </div>
+            */
+        }
+    })
+}
+
+#[derive(Props)]
+pub struct PeriodProps<'a> {
+    pub hours_data: &'a UseRef<HoursData>,
+    pub month: u32,
+    pub year: i32,
+}
+
+fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
+    let route = use_route(cx);
+    let name = route.segment("name").unwrap();
+    let hours_data = cx.props.hours_data;
+    let month = cx.props.month;
+    let year = cx.props.year;
+
+    cx.render(rsx! {
+        div{
+            for record in hours_data.read().dataframe.data.iter().filter(
+                |x| {(x.name==name) && (x.year == year) && (x.month == month)}){
+                period_entry{record: record.clone()}
             }
         }
     })
 }
 
 pub fn app(cx: Scope) -> Element {
-    let hours_data = use_ref(cx, || {
-        HoursData::from_store("/home/orest/PycharmProjects/hours3/app/data").unwrap()
-    });
-    let data = HoursData::from_store("/home/orest/PycharmProjects/hours3/app/data").unwrap();
-
+    let hours_data = use_ref(cx, || HoursData::from_store(".").unwrap());
+    let names = hours_data.read().names.clone();
     //let names = data.names.clone();
     cx.render(rsx! {
         style{
@@ -91,10 +200,12 @@ pub fn app(cx: Scope) -> Element {
             "Hello, world!"
         },
         Router{
-            Link{to: "/names", "Names"},
-            Link{to: "/names", "Names"},
-            Route{to: "/names", show_names{names: data.names.clone()}},
-            Route{to: "/user/:name", user_view{}},
+            ul{
+              li{Link{to: "/names", "Names"}},
+              li{Link{to: "/admin/names", "Edit names"}},
+            }
+            Route{to: "/names", show_names{names: names}},
+            Route{to: "/user/:name", user_view{hours_data: hours_data}},
             Route{to: "/admin/names", edit_names{hours_data: hours_data}},
         }
     })

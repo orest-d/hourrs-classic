@@ -21,7 +21,7 @@ h3 {
 
 }
 
-button {
+button.name {
     min-width: 100px;
     background-color: #3D3D3D;
     color: #D7D9D0;
