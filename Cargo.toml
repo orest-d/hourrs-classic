@@ -1,0 +1,17 @@
+[package]
+name = "hourrs-classic"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.70"
+csv = "1.2.1"
+dioxus = "0.3.2"
+dioxus-desktop = "0.3.0"
+dioxus-router = "0.3.0"
+serde = "1.0.160"
+serde_derive = "1.0.160"
+serde_json = "1.0.96"
+serde_yaml = "0.9.21"
