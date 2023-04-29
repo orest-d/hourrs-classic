@@ -153,13 +153,21 @@ pub fn period_entry(cx: Scope, record: HoursRecord) -> Element {
                 class:"b",
                 record.start_time()
             },
-            /*
-            <span class="b"><span v-if="endTimeValid">{{endTime}}</span><span v-else>-</span></span>\
-            <span class="c"><span v-if="endTimeValid">{{originalHours}}</span><span v-else>-</span></span>\
-            <span class="d">{{hours}}</span>\
-            <span class="e"></span>\
-            </div>
-            */
+            span{
+                class:"b",
+                record.end_time()
+            },
+            span{
+                class:"c",
+                record.original_hours()   
+            }
+            span{
+                class:"d",
+                record.hours.to_string()
+            },            
+            span{
+                class:"e"
+            }
         }
     })
 }

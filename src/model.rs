@@ -70,6 +70,22 @@ impl HoursRecord {
         let duration = self.end_dt()?.signed_duration_since(self.start_dt()?);
         Ok(duration.num_seconds() as f64 / 3600.0)
     }
+    pub fn original_hours(&self) -> String{
+        if let Ok(h) = self.calculate_hours() {
+            format!("{:.2}", h)
+        } else {
+            "-".to_string()
+        }
+    }
+    pub fn hours(&self) -> String {
+        if let Ok(h) = self.hours.parse::<f64>(){
+            format!("{:.2}", h)
+        }
+        else{
+            self.original_hours()
+        }
+    }
+    
     pub fn date(&self) -> String {
         if let Ok(d) = self.start_dt() {
             format!("{:04}/{:02}/{:02}", d.year(), d.month(), d.day())
@@ -79,6 +95,13 @@ impl HoursRecord {
     }
     pub fn start_time(&self) -> String {
         if let Ok(d) = self.start_dt() {
+            format!("{:02}:{:02}", d.hour(), d.minute())
+        } else {
+            "".to_string()
+        }
+    }
+    pub fn end_time(&self) -> String {
+        if let Ok(d) = self.end_dt() {
             format!("{:02}:{:02}", d.hour(), d.minute())
         } else {
             "".to_string()
