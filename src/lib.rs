@@ -3,6 +3,9 @@ use crate::model::HoursData;
 use dioxus::{html::input_data::keyboard_types::Key, prelude::*};
 use dioxus_router::{use_route, use_router, Link, Route, Router};
 use model::HoursRecord;
+use dioxus_free_icons::icons::io_icons::{IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoTrashBinOutline};
+use dioxus_free_icons::Icon;
+
 
 #[derive(PartialEq, Props)]
 struct Names {
@@ -52,7 +55,7 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                         },
                         "{name}"
                     },
-                    button{
+                    span{
                         onclick: move |_event|{
                             let mut hours_data = hours_data.write();
                             if hours_data.names.len()>1 && i>0{
@@ -60,9 +63,15 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                                 hours_data.names.insert(i-1, x);
                             }
                         },
-                        "up"
+                        class:"icon",
+                        Icon{
+                            width: 40,
+                            height: 40,
+                            //fill: "white",
+                            icon: IoArrowUpCircleOutline,
+                        }
                     },
-                    button{
+                    span{
                         onclick: move |_event|{
                             let mut hours_data = hours_data.write();
                             if hours_data.names.len()>1 && i<hours_data.names.len()-1{
@@ -70,16 +79,26 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                                 hours_data.names.insert(i+1, x);
                             }
                         },
-                        "down"
+                        class:"icon",
+                        Icon{
+                            width: 40,
+                            height: 40,
+                            icon: IoArrowDownCircleOutline,
+                        }
                     },
-                    button{
+                    span{
                         onclick: move |_event|{
                             let mut hours_data = hours_data.write();
                             if !hours_data.names.is_empty(){
                                 hours_data.names.remove(i);
                             }
                         },
-                        "delete"
+                        class:"icon",
+                        Icon{
+                            width: 40,
+                            height: 40,
+                            icon: IoTrashBinOutline,
+                        }
                     }
                 }
             }

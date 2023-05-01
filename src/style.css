@@ -20,6 +20,13 @@ h3 {
     padding:5px;
 
 }
+.icon{
+    filter: invert(42%);
+    padding: 5px;
+    /*margin-top: 10px;*/
+    display: inline-block;
+    vertical-align: middle;
+}
 
 button.name {
     min-width: 100px;
