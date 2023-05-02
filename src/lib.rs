@@ -1,11 +1,12 @@
 mod model;
 use crate::model::HoursData;
 use dioxus::{html::input_data::keyboard_types::Key, prelude::*};
+use dioxus_free_icons::icons::io_icons::{
+    IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoTrashBinOutline,
+};
+use dioxus_free_icons::Icon;
 use dioxus_router::{use_route, use_router, Link, Route, Router};
 use model::HoursRecord;
-use dioxus_free_icons::icons::io_icons::{IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoTrashBinOutline};
-use dioxus_free_icons::Icon;
-
 
 #[derive(PartialEq, Props)]
 struct Names {
@@ -19,6 +20,7 @@ fn show_names(cx: Scope<Names>) -> Element {
             for name in cx.props.names.iter(){
                 p{
                     button{
+                        class:"name",
                         onclick: move |_event|{
                             let path = format!("/user/{}", name);
                             dbg!(&path);
@@ -32,9 +34,98 @@ fn show_names(cx: Scope<Names>) -> Element {
     })
 }
 
+#[derive(Default, Clone, Debug)]
+pub struct Mode {
+    login_time: Option<chrono::DateTime<chrono::Local>>,
+}
+
+impl Mode {
+    pub fn is_admin(&self) -> bool {
+        if let Some(t) = self.login_time {
+            let now = chrono::Local::now();
+            let duration = now - t;
+            duration.num_seconds() < 60 * 10
+        } else {
+            false
+        }
+    }
+
+    pub fn login(&mut self, password: &str) -> bool {
+        if password == include_str!("../src/password.txt") {
+            self.login_time = Some(chrono::Local::now());
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn logout(&mut self) {
+        self.login_time = None;
+    }
+}
+
+#[derive(Props)]
+struct TitleProps<'a> {
+    pub mode: &'a UseRef<Mode>,
+    pub title_text: String,
+}
+
+fn page_title<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
+    let mode = cx.props.mode;
+    let title_text = cx.props.title_text.clone();
+    let password = use_state(cx, || "".to_string());
+    let show_login= use_state(cx, || false);
+
+    cx.render(rsx! {
+        h1 {
+            title_text,
+            if mode.read().is_admin(){
+                rsx!{
+                    button{
+                        class:"menu",
+                        onclick: move |_event|{
+                            mode.write().logout();
+                        },
+                        "Logout"
+                    }
+                }
+            }
+            else{
+                if *show_login.get(){
+                    rsx!(
+                        input{
+                        class: "password",
+                        "type": "password",
+                        value: "{password}",
+                        oninput: move |event|{
+                            password.set(event.value.clone());
+                        },
+                        onkeypress: move |event|{
+                            if event.key()==Key::Enter{
+                                mode.write().login(&password.get());
+                                show_login.set(false);
+                            }
+                        },
+                    })
+                }
+                else{
+                    rsx!(button{
+                        class:"admin",
+                        onclick: move |_event|{
+                            show_login.set(true);
+                        },
+                        "Admin"
+                    })
+                }
+            },
+        }
+    })
+}
+
 #[derive(Props)]
 struct HoursDataProps<'a> {
     pub hours_data: &'a UseRef<HoursData>,
+    pub mode: &'a UseRef<Mode>,
 }
 
 fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
@@ -121,10 +212,38 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
     })
 }
 
+fn users_page<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
+    let hours_data = cx.props.hours_data;
+    let mode = cx.props.mode;
+    let names = hours_data.read().names.clone();
+    cx.render(rsx! {
+        page_title{
+            mode: mode,
+            title_text: "Users".to_string(),
+        },
+        if mode.read().is_admin(){
+            rsx!{
+                edit_names{
+                    hours_data: hours_data,
+                    mode: mode,
+                }
+            }
+        }
+        else{
+            rsx!{
+                show_names{
+                    names: names,
+                }
+            }
+        },
+    })
+}
+
 fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
     let route = use_route(cx);
     let name = route.segment("name").unwrap();
     let hours_data = cx.props.hours_data;
+    let mode = cx.props.mode;
 
     cx.render(rsx! {
         div{
@@ -154,6 +273,7 @@ fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                 hours_data: hours_data,
                 month: 4,
                 year: 2023,
+                mode: mode,
             }
         }
 
@@ -178,12 +298,12 @@ pub fn period_entry(cx: Scope, record: HoursRecord) -> Element {
             },
             span{
                 class:"c",
-                record.original_hours()   
+                record.original_hours()
             }
             span{
                 class:"d",
                 record.hours.to_string()
-            },            
+            },
             span{
                 class:"e"
             }
@@ -194,6 +314,7 @@ pub fn period_entry(cx: Scope, record: HoursRecord) -> Element {
 #[derive(Props)]
 pub struct PeriodProps<'a> {
     pub hours_data: &'a UseRef<HoursData>,
+    pub mode: &'a UseRef<Mode>,
     pub month: u32,
     pub year: i32,
 }
@@ -217,23 +338,20 @@ fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
 
 pub fn app(cx: Scope) -> Element {
     let hours_data = use_ref(cx, || HoursData::from_store(".").unwrap());
+    let mode = use_ref(cx, || Mode::default());
     let names = hours_data.read().names.clone();
     //let names = data.names.clone();
     cx.render(rsx! {
         style{
             include_str!("../src/style.css")
         },
-        h1 {
-            "Hello, world!"
-        },
         Router{
             ul{
               li{Link{to: "/names", "Names"}},
-              li{Link{to: "/admin/names", "Edit names"}},
             }
-            Route{to: "/names", show_names{names: names}},
-            Route{to: "/user/:name", user_view{hours_data: hours_data}},
-            Route{to: "/admin/names", edit_names{hours_data: hours_data}},
+            //Route{to: "/names", show_names{names: names}},
+            Route{to: "/user/:name", user_view{hours_data: hours_data, mode: mode}},
+            Route{to: "/names", users_page{hours_data: hours_data, mode: mode}},
         }
     })
 }

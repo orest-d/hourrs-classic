@@ -27,7 +27,12 @@ h3 {
     display: inline-block;
     vertical-align: middle;
 }
-
+input.password{
+    min-width: 100px;
+    padding:10px;
+    position: absolute;
+    right: 20px;
+}
 button.name {
     min-width: 100px;
     background-color: #3D3D3D;

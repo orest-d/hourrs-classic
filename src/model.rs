@@ -70,7 +70,7 @@ impl HoursRecord {
         let duration = self.end_dt()?.signed_duration_since(self.start_dt()?);
         Ok(duration.num_seconds() as f64 / 3600.0)
     }
-    pub fn original_hours(&self) -> String{
+    pub fn original_hours(&self) -> String {
         if let Ok(h) = self.calculate_hours() {
             format!("{:.2}", h)
         } else {
@@ -78,14 +78,13 @@ impl HoursRecord {
         }
     }
     pub fn hours(&self) -> String {
-        if let Ok(h) = self.hours.parse::<f64>(){
+        if let Ok(h) = self.hours.parse::<f64>() {
             format!("{:.2}", h)
-        }
-        else{
+        } else {
             self.original_hours()
         }
     }
-    
+
     pub fn date(&self) -> String {
         if let Ok(d) = self.start_dt() {
             format!("{:04}/{:02}/{:02}", d.year(), d.month(), d.day())

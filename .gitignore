@@ -17,3 +17,9 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+# project related
+password.txt
+*.json
+*.csv
+*.xlsx
