@@ -2,11 +2,12 @@ mod model;
 use crate::model::HoursData;
 use dioxus::{html::input_data::keyboard_types::Key, prelude::*};
 use dioxus_free_icons::icons::io_icons::{
-    IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoTrashBinOutline,
+    IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoPencilOutline, IoPlayCircleOutline,
+    IoStopCircleOutline, IoTrashBinOutline,
 };
 use dioxus_free_icons::Icon;
-use dioxus_router::{use_route, use_router, Link, Route, Router};
-use model::HoursRecord;
+use dioxus_router::{use_route, use_router, Link, Route, Router, Redirect};
+use model::{HoursRecord, Period};
 
 #[derive(PartialEq, Props)]
 struct Names {
@@ -74,7 +75,7 @@ fn page_title<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
     let mode = cx.props.mode;
     let title_text = cx.props.title_text.clone();
     let password = use_state(cx, || "".to_string());
-    let show_login= use_state(cx, || false);
+    let show_login = use_state(cx, || false);
 
     cx.render(rsx! {
         h1 {
@@ -104,6 +105,7 @@ fn page_title<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
                             if event.key()==Key::Enter{
                                 mode.write().login(&password.get());
                                 show_login.set(false);
+                                password.set("".to_string());
                             }
                         },
                     })
@@ -113,6 +115,7 @@ fn page_title<'a>(cx: Scope<'a, TitleProps<'a>>) -> Element {
                         class:"admin",
                         onclick: move |_event|{
                             show_login.set(true);
+                            password.set("".to_string());
                         },
                         "Admin"
                     })
@@ -239,16 +242,27 @@ fn users_page<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
     })
 }
 
-fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
+fn user_view<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
     let route = use_route(cx);
-    let name = route.segment("name").unwrap();
+    let name = route.segment("name").unwrap_or("?");
     let hours_data = cx.props.hours_data;
     let mode = cx.props.mode;
+    let year = cx.props.year;
+    let month = cx.props.month;
+    let mut period = Period::new(year, month);
 
     cx.render(rsx! {
         div{
-            h1{
-                "{name}"
+            page_title{
+                mode: mode,
+                title_text: name.to_string(),
+            },
+            span{
+                class:"period",
+                "{period}"
+            },
+            span{
+                class:"e",
             },
             if hours_data.read().is_started(name){
                 rsx!{button{
@@ -257,6 +271,14 @@ fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                         let mut hours_data = hours_data.write();
                         hours_data.end(name);
                     },
+                    span{
+                        class:"icon1",
+                        Icon{
+                            width: 20,
+                            height: 20,
+                            icon: IoStopCircleOutline,
+                        }
+                    }
                     "End"
                 }}
             }else{
@@ -266,12 +288,21 @@ fn user_view<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                         let mut hours_data = hours_data.write();
                         hours_data.start(name);
                     },
+                    span{
+                        class:"icon1",
+                        Icon{
+                            width: 20,
+                            height: 20,
+                            icon: IoPlayCircleOutline,
+                        }
+                    }
                     "Start"
                 }}
             },
+            br{},
             period_overview{
                 hours_data: hours_data,
-                month: 4,
+                month: 5,
                 year: 2023,
                 mode: mode,
             }
@@ -312,6 +343,91 @@ pub fn period_entry(cx: Scope, record: HoursRecord) -> Element {
 }
 
 #[derive(Props)]
+pub struct PeriodEntryProps<'a> {
+    pub hours_data: &'a UseRef<HoursData>,
+    pub mode: &'a UseRef<Mode>,
+    pub i: usize,
+}
+
+pub fn edit_period_entry<'a>(cx: Scope<'a, PeriodEntryProps<'a>>) -> Element {
+    let edit_field = use_state(cx, || false);
+    let mode = cx.props.mode;
+    let hours_data = cx.props.hours_data;
+    let i = cx.props.i;
+    let record = hours_data.read().dataframe.data[i].clone();
+
+    cx.render(rsx! {
+        div{
+            div{
+                class:"a",
+                record.date()
+            },
+            span{
+                class:"b",
+                record.start_time()
+            },
+            span{
+                class:"b",
+                record.end_time()
+            },
+            span{
+                class:"c",
+                record.original_hours()
+            }
+            if mode.read().is_admin(){
+                if *edit_field.get(){
+                    let value = record.hours.clone();
+                    rsx!{
+                        input{
+                            value: "{value}",
+                            oninput: move |event|{
+                                let mut hours_data = hours_data.write();
+                                hours_data.dataframe.data[i].hours = event.value.to_string();
+                            },
+                            onkeypress: move |event|{
+                                if event.key()==Key::Enter{
+                                    edit_field.set(false);
+                                }
+                            },
+                        }
+                    }
+                }
+                else{
+                    rsx!{
+                        span{
+                            class:"d",
+                            record.hours().to_string()
+                        },
+                        span{
+                            class:"icon",
+                            onclick: move |_event|{
+                                edit_field.set(true);
+                            },
+                            Icon{
+                                width: 16,
+                                height: 16,
+                                icon: IoPencilOutline,
+                            },
+                        }
+                    }
+                }
+            }
+            else{
+                rsx!{
+                    span{
+                        class:"d",
+                        record.hours().to_string()
+                    },
+                }
+            }
+            span{
+                class:"e"
+            }
+        }
+    })
+}
+
+#[derive(Props)]
 pub struct PeriodProps<'a> {
     pub hours_data: &'a UseRef<HoursData>,
     pub mode: &'a UseRef<Mode>,
@@ -323,14 +439,28 @@ fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
     let route = use_route(cx);
     let name = route.segment("name").unwrap();
     let hours_data = cx.props.hours_data;
+    let mode = cx.props.mode;
     let month = cx.props.month;
     let year = cx.props.year;
+    let index = hours_data
+        .read()
+        .dataframe
+        .data
+        .iter()
+        .enumerate()
+        .filter(|(_i, x)| (x.name == name) && (x.year == year) && (x.month == month))
+        .map(|(i, _x)| i)
+        .collect::<Vec<usize>>();
 
     cx.render(rsx! {
         div{
-            for record in hours_data.read().dataframe.data.iter().filter(
-                |x| {(x.name==name) && (x.year == year) && (x.month == month)}){
-                period_entry{record: record.clone()}
+            for i in index.iter(){
+                edit_period_entry{
+                    hours_data: hours_data,
+                    mode: mode,
+                    i: *i,
+                }
+                //period_entry{record: record.clone()}
             }
         }
     })
@@ -339,19 +469,25 @@ fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
 pub fn app(cx: Scope) -> Element {
     let hours_data = use_ref(cx, || HoursData::from_store(".").unwrap());
     let mode = use_ref(cx, || Mode::default());
-    let names = hours_data.read().names.clone();
+    let _names = hours_data.read().names.clone();
     //let names = data.names.clone();
+    let period = Period::current();
     cx.render(rsx! {
         style{
             include_str!("../src/style.css")
         },
         Router{
+            /*
             ul{
-              li{Link{to: "/names", "Names"}},
+                li{Link{to: "/names", "Names"}},
             }
+            */
+            
             //Route{to: "/names", show_names{names: names}},
-            Route{to: "/user/:name", user_view{hours_data: hours_data, mode: mode}},
+            //Redirect{to: "/names"},
+            Route{to: "/user/:name", user_view{hours_data: hours_data, mode: mode, year: period.year, month: period.month}},
             Route{to: "/names", users_page{hours_data: hours_data, mode: mode}},
+            Route{to: "/", users_page{hours_data: hours_data, mode: mode}},
         }
     })
 }

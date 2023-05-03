@@ -27,6 +27,11 @@ h3 {
     display: inline-block;
     vertical-align: middle;
 }
+.icon1{
+    display: inline-block;
+    vertical-align: middle;
+    padding-right: 5px;
+}
 input.password{
     min-width: 100px;
     padding:10px;
@@ -57,6 +62,14 @@ button.menu {
     position: absolute;
     right: 20px;
 }
+.period { 
+    width:100px;
+    color:#ffffff;
+    background-color: #3A3A31;
+    margin:1px;
+    padding:3px;
+	float: left;
+}            
 .a { 
     width:200px;
     color:#ffffff;
