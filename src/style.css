@@ -64,11 +64,24 @@ button.menu {
 }
 .period { 
     width:100px;
+    min-height: 24px;
     color:#ffffff;
     background-color: #3A3A31;
     margin:1px;
     padding:3px;
 	float: left;
+    font-size: larger;
+}            
+.perdiodbutton { 
+    width:50px;
+    min-height: 24px;
+    /*color:#ffffff;*/
+    /*background-color: #242131;*/
+    margin:1px;
+    padding:3px;
+    filter: invert(42%);
+    display: inline-block;
+    vertical-align: middle;
 }            
 .a { 
     width:200px;

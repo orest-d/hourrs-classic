@@ -22,7 +22,7 @@ impl Field {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Period {
     pub year: i32,
     pub month: u32,
@@ -181,14 +181,14 @@ pub struct HoursDataFrame {
     pub data: Vec<HoursRecord>,
 }
 
-impl HoursDataFrame{
-    pub fn new()-> HoursDataFrame{
-        HoursDataFrame{
+impl HoursDataFrame {
+    pub fn new() -> HoursDataFrame {
+        HoursDataFrame {
             schema: Schema::default(),
             data: Vec::new(),
         }
     }
-    pub fn for_period(&self, name:&str, period: &Period) -> HoursDataFrame {
+    pub fn for_period(&self, name: &str, period: &Period) -> HoursDataFrame {
         let mut df = HoursDataFrame::new();
         df.schema = self.schema.clone();
         df.data = self
@@ -199,9 +199,27 @@ impl HoursDataFrame{
             .collect();
         df
     }
+    pub fn first_period(&self) -> Period {
+        let mut min = Period::new(9999, 99);
+        for r in &self.data {
+            if r.period() < min {
+                min = r.period();
+            }
+        }
+        min
+    }
+    pub fn last_period(&self) -> Period {
+        let mut max = Period::new(0, 0);
+        for r in &self.data {
+            if r.period() > max {
+                max = r.period();
+            }
+        }
+        max
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct HoursData {
     pub dataframe: HoursDataFrame,
     pub names: Vec<String>,

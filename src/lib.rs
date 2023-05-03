@@ -3,10 +3,10 @@ use crate::model::HoursData;
 use dioxus::{html::input_data::keyboard_types::Key, prelude::*};
 use dioxus_free_icons::icons::io_icons::{
     IoArrowDownCircleOutline, IoArrowUpCircleOutline, IoPencilOutline, IoPlayCircleOutline,
-    IoStopCircleOutline, IoTrashBinOutline,
+    IoStopCircleOutline, IoTrashBinOutline, IoArrowBackCircleOutline, IoArrowForwardCircleOutline,
 };
 use dioxus_free_icons::Icon;
-use dioxus_router::{use_route, use_router, Link, Route, Router, Redirect};
+use dioxus_router::{use_route, use_router, Link, Redirect, Route, Router};
 use model::{HoursRecord, Period};
 
 #[derive(PartialEq, Props)]
@@ -249,7 +249,7 @@ fn user_view<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
     let mode = cx.props.mode;
     let year = cx.props.year;
     let month = cx.props.month;
-    let mut period = Period::new(year, month);
+    let mut period = use_state(cx, || Period::new(year, month));
 
     cx.render(rsx! {
         div{
@@ -260,6 +260,34 @@ fn user_view<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
             span{
                 class:"period",
                 "{period}"
+            },
+            span{
+                class:"perdiodbutton",
+                onclick: move |_event|{
+                    let new_period = period.get().previous();
+                    if true || new_period>=hours_data.read().dataframe.first_period(){
+                        period.set(new_period);
+                    }
+                },
+                Icon{
+                    width: 24,
+                    height: 24,
+                    icon: IoArrowBackCircleOutline,
+                }
+            },
+            span{
+                class:"perdiodbutton",
+                onclick: move |_event|{
+                    let new_period = period.get().next();
+                    if true || new_period<=Period::current() || new_period<=hours_data.read().dataframe.last_period(){
+                        period.set(new_period);
+                    }
+                },
+                Icon{
+                    width: 24,
+                    height: 24,
+                    icon: IoArrowForwardCircleOutline,
+                }
             },
             span{
                 class:"e",
@@ -302,8 +330,8 @@ fn user_view<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
             br{},
             period_overview{
                 hours_data: hours_data,
-                month: 5,
-                year: 2023,
+                month: period.get().month,
+                year: period.get().year,
                 mode: mode,
             }
         }
@@ -467,7 +495,9 @@ fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
 }
 
 pub fn app(cx: Scope) -> Element {
-    let hours_data = use_ref(cx, || HoursData::from_store(".").unwrap());
+    let hours_data = use_ref(cx, || {
+        HoursData::from_store(".").unwrap_or_else(|_| HoursData::default())
+    });
     let mode = use_ref(cx, || Mode::default());
     let _names = hours_data.read().names.clone();
     //let names = data.names.clone();
