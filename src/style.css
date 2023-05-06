@@ -33,7 +33,7 @@ h3 {
     padding-right: 5px;
 }
 input.password{
-    min-width: 100px;
+    min-width: 200px;
     padding:10px;
     position: absolute;
     right: 20px;
@@ -53,6 +53,14 @@ button.admin {
     padding:10px;
     position: absolute;
     right: 20px;
+}
+button.home {
+    background-color:#006912;
+    min-width: 100px;
+    color:#ffffff;
+    padding:10px;
+    position: absolute;
+    right: 130px;
 }
 button.menu {
     background-color:#5a75aa;

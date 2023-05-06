@@ -17,3 +17,4 @@ serde_derive = "1.0.160"
 serde_json = "1.0.96"
 serde_yaml = "0.9.21"
 dioxus-free-icons = { version = "0.6.0", features = ["ionicons"] }
+dirs = "5.0.1"

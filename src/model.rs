@@ -5,7 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::path::Path;
+use std::iter::Sum;
+use std::ops::{Add, Sub};
+use std::path::{Path, PathBuf};
+
+const MAX_SECONDS: i64 = 60*60*15;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Field {
@@ -31,6 +35,63 @@ pub struct Period {
 impl Display for Period {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:04}/{:02}", self.year, self.month)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+pub struct Hours(f64);
+
+impl Display for Hours {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let h = self.0.floor();
+        let m = ((self.0 - h) * 60.0).trunc();
+        write!(f, "{:02}:{:02}", h, m)
+    }
+}
+
+impl Hours {
+    pub fn new(h: f64) -> Self {
+        Self(h)
+    }
+}
+
+impl From<f64> for Hours {
+    fn from(h: f64) -> Self {
+        Self(h)
+    }
+}
+
+impl From<Hours> for f64 {
+    fn from(h: Hours) -> Self {
+        h.0
+    }
+}
+
+impl From<Hours> for String {
+    fn from(h: Hours) -> Self {
+        format!("{}", h)
+    }
+}
+
+impl Add for Hours {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl Sub for Hours {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
+}
+
+impl Sum for Hours {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::default(), |a, b| a + b)
     }
 }
 
@@ -133,22 +194,38 @@ impl HoursRecord {
         Ok(end)
     }
 
-    pub fn calculate_hours(&self) -> Result<f64> {
+    pub fn calculate_hours(&self) -> Result<Hours> {
         let duration = self.end_dt()?.signed_duration_since(self.start_dt()?);
-        Ok(duration.num_seconds() as f64 / 3600.0)
+        Ok((duration.num_seconds() as f64 / 3600.0).into())
     }
     pub fn original_hours(&self) -> String {
         if let Ok(h) = self.calculate_hours() {
-            format!("{:.2}", h)
+            format!("{}", h)
         } else {
             "-".to_string()
         }
     }
     pub fn hours(&self) -> String {
         if let Ok(h) = self.hours.parse::<f64>() {
-            format!("{:.2}", h)
+            format!("{}", Hours(h))
         } else {
-            self.original_hours()
+            if let Ok(h) = self.calculate_hours() {
+                if h.0 > 0.0 && h.0*60.0*60.0<MAX_SECONDS as f64{
+                    format!("{}", h)
+                } else {
+                    "unfinished".to_string()
+                }
+            } else {
+                "?".to_string()
+            }
+        }
+    }
+
+    pub fn hours_worked(&self) -> Hours {
+        if let Ok(h) = self.hours.parse::<f64>() {
+            h.into()
+        } else {
+            self.calculate_hours().unwrap_or(Hours::default())
         }
     }
 
@@ -171,6 +248,39 @@ impl HoursRecord {
             format!("{:02}:{:02}", d.hour(), d.minute())
         } else {
             "".to_string()
+        }
+    }
+    pub fn finished(&self) -> bool {
+        if let Ok(start) = self.start_dt() {
+            let end = self
+                .end_dt()
+                .unwrap_or_else(|_e| Local::now().naive_local());
+            let duration = end.signed_duration_since(start);
+
+            duration.num_seconds() > 0 && duration.num_seconds() < MAX_SECONDS
+        } else {
+            false
+        }
+    }
+    pub fn worked(&self) -> String {
+        if let Ok(start) = self.start_dt() {
+            let end = self
+                .end_dt()
+                .unwrap_or_else(|_e| Local::now().naive_local());
+            let duration = end.signed_duration_since(start);
+            println!("duration:     {:?}", duration);
+            println!("duration (s): {:?}", duration.num_seconds());
+            if duration.num_seconds() > 0 && duration.num_seconds() < MAX_SECONDS {
+                format!(
+                    "{:02}:{:02}",
+                    duration.num_hours() % 24,
+                    duration.num_minutes() % 60
+                )
+            } else {
+                "Not finished".to_string()
+            }
+        } else {
+            "Not started".to_string()
         }
     }
 }
@@ -199,6 +309,21 @@ impl HoursDataFrame {
             .collect();
         df
     }
+    pub fn hours_for_period(&self, name: &str, period: &Period) -> Hours {
+        self.data
+            .iter()
+            .filter(|r| r.period() == *period && r.name == name)
+            .map(|r| r.hours_worked())
+            .sum()
+    }
+    pub fn status_for_period(&self, name: &str, period: &Period) -> String {
+        self.data
+            .iter()
+            .filter(|r| r.period() == *period && r.name == name)
+            .last()
+            .map(|r| r.worked())
+            .unwrap_or(" - ".to_string())
+    }
     pub fn first_period(&self) -> Period {
         let mut min = Period::new(9999, 99);
         for r in &self.data {
@@ -226,7 +351,28 @@ pub struct HoursData {
 }
 
 impl HoursData {
+    pub fn folder() -> PathBuf {
+        dirs::home_dir().unwrap().join(".hours")
+    }
+    pub fn create_if_not_exists() -> Result<()> {
+        let path = Self::folder();
+        if !path.is_dir() {
+            std::fs::create_dir_all(&path)?;
+        }
+        let dataframe_path = (&path).join("hours_dataframe.json");
+        if !dataframe_path.exists() {
+            let hours_data = HoursData::default();
+            hours_data.save_to(&path)?;
+        }
+        Ok(())
+    }
+    pub fn load() -> Result<HoursData> {
+        Self::create_if_not_exists()?;
+        HoursData::from_store(Self::folder())
+    }
     pub fn from_store<P: AsRef<Path>>(path: P) -> Result<HoursData> {
+        println!("Load from {:?}", path.as_ref());
+
         let file = File::open(path.as_ref().join("hours_dataframe.json"))?;
         //        let mut buf_reader = BufReader::new(file);
         let dataframe: HoursDataFrame = serde_json::from_reader(file)?;
@@ -238,7 +384,7 @@ impl HoursData {
         Ok(HoursData { dataframe, names })
     }
 
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+    pub fn save_to<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         std::fs::write(
             path.as_ref().join("hours_dataframe.json"),
             serde_json::to_string_pretty(&self.dataframe).unwrap(),
@@ -248,6 +394,11 @@ impl HoursData {
             serde_json::to_string_pretty(&self.names).unwrap(),
         )?;
         Ok(())
+    }
+    pub fn save(&self) -> Result<()> {
+        let path = Self::folder();
+        println!("Saving to {:?}", path);
+        self.save_to(path)
     }
 
     pub fn start(&mut self, name: &str) -> Result<()> {
@@ -277,6 +428,7 @@ impl HoursData {
             hours,
         );
         self.dataframe.data.push(record);
+        self.save()?;
         Ok(())
     }
 
@@ -304,11 +456,15 @@ impl HoursData {
         }
         let mut record = self.dataframe.data.get_mut(rowid as usize).unwrap();
         record.end = end;
+        /*
         let start = chrono::NaiveDateTime::parse_from_str(&record.start, "%Y-%m-%d %H:%M:%S")?;
         let end = chrono::NaiveDateTime::parse_from_str(&record.end, "%Y-%m-%d %H:%M:%S")?;
         let duration = end.signed_duration_since(start);
         let hours = format!("{}", duration.num_seconds() as f64 / 3600.0);
         record.hours = hours;
+        */
+        record.hours = "".to_string();
+        self.save()?;
         Ok(())
     }
 
