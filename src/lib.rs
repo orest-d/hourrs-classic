@@ -163,6 +163,7 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                             if hours_data.names.len()>1 && i>0{
                                 let x = hours_data.names.remove(i);
                                 hours_data.names.insert(i-1, x);
+                                hours_data.save();
                             }
                         },
                         class:"icon",
@@ -179,6 +180,7 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                             if hours_data.names.len()>1 && i<hours_data.names.len()-1{
                                 let x = hours_data.names.remove(i);
                                 hours_data.names.insert(i+1, x);
+                                hours_data.save();
                             }
                         },
                         class:"icon",
@@ -193,6 +195,7 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                             let mut hours_data = hours_data.write();
                             if !hours_data.names.is_empty(){
                                 hours_data.names.remove(i);
+                                hours_data.save();
                             }
                         },
                         class:"icon",
@@ -216,6 +219,7 @@ fn edit_names<'a>(cx: Scope<'a, HoursDataProps<'a>>) -> Element {
                     let mut hours_data = hours_data.write();
                     hours_data.names.push(new_name.get().clone());
                     new_name.set("".to_string());
+                    hours_data.save();
                 }
             },
 
