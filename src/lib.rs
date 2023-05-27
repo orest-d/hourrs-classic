@@ -523,6 +523,31 @@ fn period_overview<'a>(cx: Scope<'a, PeriodProps<'a>>) -> Element {
 
     cx.render(rsx! {
         div{
+            div{
+                class:"a",
+                b{"Date"}
+            },
+            span{
+                class:"b",
+                b{"Start"}
+            },
+            span{
+                class:"b",
+                b{"End"}
+            },
+            span{
+                class:"c",
+                b{"Recorded Hours"}
+            },
+            span{
+                class:"d",
+                b{"Final Hours"}
+            },
+            span{
+                class:"e"
+            }
+        }
+        div{
             for i in index.iter(){
                 edit_period_entry{
                     hours_data: hours_data,

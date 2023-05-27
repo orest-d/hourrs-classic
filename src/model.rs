@@ -268,8 +268,6 @@ impl HoursRecord {
                 .end_dt()
                 .unwrap_or_else(|_e| Local::now().naive_local());
             let duration = end.signed_duration_since(start);
-            println!("duration:     {:?}", duration);
-            println!("duration (s): {:?}", duration.num_seconds());
             if duration.num_seconds() > 0 && duration.num_seconds() < MAX_SECONDS {
                 format!(
                     "{:02}:{:02}",
@@ -352,7 +350,7 @@ pub struct HoursData {
 
 impl HoursData {
     pub fn folder() -> PathBuf {
-        dirs::home_dir().unwrap().join(".hours")
+        dirs::home_dir().unwrap().join("Hours")
     }
     pub fn create_if_not_exists() -> Result<()> {
         let path = Self::folder();
